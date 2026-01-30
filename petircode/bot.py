@@ -12,7 +12,7 @@ from telegram.ext import (
 )
 
 from .config import config
-from .handlers.commands import fetch_command
+from .handlers.commands import fetch_command, ask_command, computer_command
 
 logger = logging.getLogger(__name__)
 
@@ -46,6 +46,8 @@ Available commands:
 /info - Get bot information
 /fetch <url> - Fetch content from URL
 /search <query> - Search for information
+/ask <question> - Ask DeepSeek AI a question
+/computer <operation> - Execute computer operations via Claude Code
 
 Send me any message and I'll echo it back!
 """
@@ -71,6 +73,8 @@ Send me any message and I'll echo it back!
         self.application.add_handler(CommandHandler("help", self.help_command))
         self.application.add_handler(CommandHandler("info", self.info_command))
         self.application.add_handler(CommandHandler("fetch", fetch_command))
+        self.application.add_handler(CommandHandler("ask", ask_command))
+        self.application.add_handler(CommandHandler("computer", computer_command))
         self.application.add_handler(
             MessageHandler(filters.TEXT & ~filters.COMMAND, self.echo_message)
         )

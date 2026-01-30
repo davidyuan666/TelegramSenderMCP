@@ -30,6 +30,15 @@ class Config:
     # Logging
     LOG_LEVEL = os.getenv('LOG_LEVEL', 'INFO')
 
+    # DeepSeek API settings
+    DEEPSEEK_API_KEY = os.getenv('DEEPSEEK_API_KEY', '')
+    DEEPSEEK_API_URL = os.getenv('DEEPSEEK_API_URL', 'https://api.deepseek.com/v1/chat/completions')
+    DEEPSEEK_MODEL = os.getenv('DEEPSEEK_MODEL', 'deepseek-chat')
+
+    # Claude Code CLI settings
+    CLAUDE_CLI_PATH = os.getenv('CLAUDE_CLI_PATH', 'claude')
+    CLAUDE_TIMEOUT = int(os.getenv('CLAUDE_TIMEOUT', '300'))
+
     @classmethod
     def validate(cls):
         """Validate configuration"""
