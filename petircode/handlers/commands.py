@@ -79,11 +79,6 @@ async def deepseek_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
 
 
-async def ask_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Handle /ask command - redirect to /deepseek for compatibility"""
-    await deepseek_command(update, context)
-
-
 async def claude_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Handle /claude command to execute Claude Code CLI operations"""
     if not context.args:
@@ -143,8 +138,3 @@ async def claude_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         logger.error(f"Error executing Claude Code: {e}")
         await status_msg.edit_text("❌ Claude Code执行出错")
         await update.message.reply_text(f"❌ 错误: {str(e)}")
-
-
-async def computer_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Handle /computer command - redirect to /claude for compatibility"""
-    await claude_command(update, context)

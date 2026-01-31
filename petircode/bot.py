@@ -14,8 +14,6 @@ from telegram.ext import (
 from .config import config
 from .handlers.commands import (
     fetch_command,
-    ask_command,
-    computer_command,
     deepseek_command,
     claude_command
 )
@@ -47,16 +45,12 @@ class PetriBot:
         help_text = """
 可用命令:
 
-/start - 启动机器人
+/start - 检查机器人状态
 /help - 显示帮助信息
 /info - 获取机器人信息
 /fetch <url> - 从URL获取内容
 /deepseek <问题> - 使用DeepSeek AI回答问题
 /claude <操作> - 使用Claude Code CLI执行操作
-
-兼容命令:
-/ask <问题> - 同 /deepseek
-/computer <操作> - 同 /claude
 
 发送任何消息，我会回复你！
 """
@@ -82,12 +76,8 @@ class PetriBot:
         self.application.add_handler(CommandHandler("help", self.help_command))
         self.application.add_handler(CommandHandler("info", self.info_command))
         self.application.add_handler(CommandHandler("fetch", fetch_command))
-        # New primary commands
         self.application.add_handler(CommandHandler("deepseek", deepseek_command))
         self.application.add_handler(CommandHandler("claude", claude_command))
-        # Legacy compatibility commands
-        self.application.add_handler(CommandHandler("ask", ask_command))
-        self.application.add_handler(CommandHandler("computer", computer_command))
         self.application.add_handler(
             MessageHandler(filters.TEXT & ~filters.COMMAND, self.echo_message)
         )
