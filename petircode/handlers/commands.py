@@ -32,20 +32,27 @@ async def fetch_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text(f"Error fetching URL: {str(e)}")
 
 
-async def ask_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Handle /ask command to query DeepSeek AI"""
+async def deepseek_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Handle /deepseek command to query DeepSeek AI"""
     if not context.args:
         await update.message.reply_text(
-            "Please provide a question.\nUsage: /ask <your question>"
+            "请提供问题。\n用法: /deepseek <你的问题>"
         )
         return
 
     question = " ".join(context.args)
-    await update.message.reply_text("🤔 正在思考...")
+    status_msg = await update.message.reply_text("🤔 DeepSeek正在思考...")
 
     try:
         from ..services.deepseek import query_deepseek
+
+        # Update status
+        await status_msg.edit_text("🤔 DeepSeek正在处理您的问题...")
+
         response = await query_deepseek(question)
+
+        # Update status
+        await status_msg.edit_text("✅ DeepSeek已完成回答")
 
         # Handle long responses (Telegram limit is 4096 characters)
         if len(response) > 4000:
@@ -53,61 +60,91 @@ async def ask_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
             chunks = [response[i:i+4000] for i in range(0, len(response), 4000)]
             for i, chunk in enumerate(chunks):
                 if i == 0:
-                    await update.message.reply_text(chunk)
+                    await update.message.reply_text(f"📝 回答 (第{i+1}部分):\n\n{chunk}")
                 else:
-                    await update.message.reply_text(f"(continued...)\n\n{chunk}")
+                    await update.message.reply_text(f"📝 回答 (第{i+1}部分):\n\n{chunk}")
         else:
-            await update.message.reply_text(response)
+            await update.message.reply_text(f"📝 回答:\n\n{response}")
 
     except ValueError as e:
+        await status_msg.edit_text("⚠️ DeepSeek API未配置")
         await update.message.reply_text(
-            "⚠️ DeepSeek API is not configured. Please set DEEPSEEK_API_KEY in .env file."
+            "⚠️ DeepSeek API未配置。请在.env文件中设置DEEPSEEK_API_KEY。"
         )
     except Exception as e:
         logger.error(f"Error querying DeepSeek: {e}")
+        await status_msg.edit_text("❌ DeepSeek执行失败")
         await update.message.reply_text(
-            f"❌ Error: {str(e)}\n\nPlease try again later."
+            f"❌ 错误: {str(e)}\n\n请稍后重试。"
         )
 
 
-async def computer_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Handle /computer command to execute Claude Code operations"""
+async def ask_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Handle /ask command - redirect to /deepseek for compatibility"""
+    await deepseek_command(update, context)
+
+
+async def claude_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Handle /claude command to execute Claude Code CLI operations"""
     if not context.args:
         await update.message.reply_text(
-            "Please provide an operation description.\n"
-            "Usage: /computer <operation description>\n\n"
-            "Examples:\n"
-            "• /computer list files in current directory\n"
-            "• /computer create a file named test.txt"
+            "请提供操作描述。\n"
+            "用法: /claude <操作描述>\n\n"
+            "示例:\n"
+            "• /claude 列出当前目录的文件\n"
+            "• /claude 创建一个名为test.txt的文件\n"
+            "• /claude 帮我写一个Python脚本计算斐波那契数列"
         )
         return
 
     operation = " ".join(context.args)
-    await update.message.reply_text("💻 正在执行操作...")
+    status_msg = await update.message.reply_text("💻 Claude Code正在启动...")
 
     try:
-        from ..services.claude_code import execute_claude_code
-        result = await execute_claude_code(operation)
+        from ..services.claude_code import execute_claude_code_with_status
 
-        if result['success']:
-            output = result['stdout'].strip()
-            if not output:
-                output = "✅ 执行成功！"
+        # Execute with status updates
+        async for status_update in execute_claude_code_with_status(operation):
+            if status_update['type'] == 'status':
+                await status_msg.edit_text(f"💻 {status_update['message']}")
+            elif status_update['type'] == 'progress':
+                await status_msg.edit_text(f"⚙️ {status_update['message']}")
+            elif status_update['type'] == 'result':
+                result = status_update['data']
 
-            # Truncate if too long
-            if len(output) > 3800:
-                output = output[:3800] + "\n\n... (truncated)"
+                if result['success']:
+                    await status_msg.edit_text("✅ Claude Code执行完成")
 
-            await update.message.reply_text(f"✅ 执行成功！\n\n{output}")
-        else:
-            error_msg = result['stderr'].strip() or result['stdout'].strip()
-            if len(error_msg) > 3800:
-                error_msg = error_msg[:3800] + "\n\n... (truncated)"
+                    output = result['stdout'].strip()
+                    if not output:
+                        output = "执行成功，无输出内容。"
 
-            await update.message.reply_text(
-                f"❌ 执行失败 (exit code: {result['return_code']})\n\n{error_msg}"
-            )
+                    # Split long output
+                    if len(output) > 3800:
+                        chunks = [output[i:i+3800] for i in range(0, len(output), 3800)]
+                        for i, chunk in enumerate(chunks):
+                            await update.message.reply_text(
+                                f"📄 输出 (第{i+1}/{len(chunks)}部分):\n\n{chunk}"
+                            )
+                    else:
+                        await update.message.reply_text(f"📄 输出:\n\n{output}")
+                else:
+                    await status_msg.edit_text("❌ Claude Code执行失败")
+
+                    error_msg = result['stderr'].strip() or result['stdout'].strip()
+                    if len(error_msg) > 3800:
+                        error_msg = error_msg[:3800] + "\n\n... (已截断)"
+
+                    await update.message.reply_text(
+                        f"❌ 执行失败 (退出码: {result['return_code']})\n\n{error_msg}"
+                    )
 
     except Exception as e:
         logger.error(f"Error executing Claude Code: {e}")
-        await update.message.reply_text(f"❌ Error: {str(e)}")
+        await status_msg.edit_text("❌ Claude Code执行出错")
+        await update.message.reply_text(f"❌ 错误: {str(e)}")
+
+
+async def computer_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Handle /computer command - redirect to /claude for compatibility"""
+    await claude_command(update, context)

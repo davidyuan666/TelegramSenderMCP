@@ -12,7 +12,13 @@ from telegram.ext import (
 )
 
 from .config import config
-from .handlers.commands import fetch_command, ask_command, computer_command
+from .handlers.commands import (
+    fetch_command,
+    ask_command,
+    computer_command,
+    deepseek_command,
+    claude_command
+)
 
 logger = logging.getLogger(__name__)
 
@@ -39,17 +45,20 @@ class PetriBot:
     async def help_command(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
         """Handle /help command"""
         help_text = """
-Available commands:
+可用命令:
 
-/start - Start the bot
-/help - Show this help message
-/info - Get bot information
-/fetch <url> - Fetch content from URL
-/search <query> - Search for information
-/ask <question> - Ask DeepSeek AI a question
-/computer <operation> - Execute computer operations via Claude Code
+/start - 启动机器人
+/help - 显示帮助信息
+/info - 获取机器人信息
+/fetch <url> - 从URL获取内容
+/deepseek <问题> - 使用DeepSeek AI回答问题
+/claude <操作> - 使用Claude Code CLI执行操作
 
-Send me any message and I'll echo it back!
+兼容命令:
+/ask <问题> - 同 /deepseek
+/computer <操作> - 同 /claude
+
+发送任何消息，我会回复你！
 """
         await update.message.reply_text(help_text)
 
@@ -73,6 +82,10 @@ Send me any message and I'll echo it back!
         self.application.add_handler(CommandHandler("help", self.help_command))
         self.application.add_handler(CommandHandler("info", self.info_command))
         self.application.add_handler(CommandHandler("fetch", fetch_command))
+        # New primary commands
+        self.application.add_handler(CommandHandler("deepseek", deepseek_command))
+        self.application.add_handler(CommandHandler("claude", claude_command))
+        # Legacy compatibility commands
         self.application.add_handler(CommandHandler("ask", ask_command))
         self.application.add_handler(CommandHandler("computer", computer_command))
         self.application.add_handler(
